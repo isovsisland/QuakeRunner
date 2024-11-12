@@ -202,9 +202,9 @@ class Main(tk.Tk, tfoo.ScrollBarText):
                 self._fillComboBox(folder)
                 if id_check['maps_fldr']:
                     self.modComboBox['maps']['values'] = qf.get_maps(folder)
-                self.launchCommand()
             else:
                 self.publish("id1 Folder not detected in Base directory.\n", cls=True)
+            self.launchCommand()
 
     def selectFile(self, event):
         file_path = tfd.askopenfilename(initialdir=self.dflt_dir)
@@ -217,9 +217,9 @@ class Main(tk.Tk, tfoo.ScrollBarText):
                 self.publish("id1 Folder detected in Quake engine directory.\n")
                 if id_check['maps_fldr']:
                     self.mapStrVar.set(qf.get_games(eng_fldr))
-                self.launchCommand()
             else:
                 self.publish("id1 Folder not detected in Quake engine directory.\n", cls=True)
+            self.launchCommand()
 
     def launchCommand(self, event=None):
         eng, base, game_mod, map_mod = self._getSelections().values()
