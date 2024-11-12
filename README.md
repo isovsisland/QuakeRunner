@@ -1,4 +1,4 @@
-#Quake Runner
+# Quake Runner
 Written with Python 3.12 & tkinter.
 <pre>
 Test Machines:
@@ -6,10 +6,9 @@ Test Machines:
 - HP Envy Laptop & Windows 11 Home 23H2
 </pre>
 
+## A Python GUI Tool to Execute Quake From Commandline Options
 
-##A Python GUI Tool to Execute Quake From Commandline Options
-
-###Features & UI Description
+### Features & UI Description
 - <b>User Data Field - Quake Engine:</b> Select the path to the Quake engine *.exe (Windows) or *.app (Mac). The button to the right of the text box with the 3 dots "..." will open the file dialog. The file path can also be manually entered.
 - <b>User Data Field - Base Directory:</b> Select the path to the folder with id1 game data. The button to the right of the text box with the 3 dots "..." will open the folder dialog.
 
@@ -29,7 +28,7 @@ The rest of this document explains two options for a directory structure to run 
 
 Quake Runner has been tested with QuakeSpasm, QuakeSpasm-Spiked, vkQuake, vkQuake-RT & IronWail on Windows. For Mac, QuakeSpasm is the only modern port I've found with support for the MacOS.
 
-###Basic Directory Structure (Mac or Windows)
+### Basic Directory Structure (Mac or Windows)
 
 ~~~
 Quake
@@ -124,7 +123,7 @@ Map variation that includes setting the skill level.
 
 Another note for Mac users. Python (for Mac) comes with a python launcher that can be associated with python scripts. I have read claims of changing the file extension to "pyw" with the appropriate settings in the lancher will prevent a terminal window from opening alongside the script. I have never been able to get that to work. The terminal window hovering in my dock doing nothing, for me, is quite annoying. The solution is to create an Automator app. The Python script will run as if it were its own executable and without the terminal window. And like a Windows shortcut, the icon can be changed to match your app. I'll include some instructions at the end for Quake Runner.
 
-###Two Folder Directory Structure
+### Two Folder Directory Structure
 
 I found that as my appetite for mods grew, my folder started getting messy. Luckily, the current set of popular engine ports have command line options that facilitate organization of content into a different folder through the commandline option "-basedir". This allows you to have a folder for your engine(s) and a single folder for game data.
 
@@ -154,7 +153,7 @@ Quake
     |_pak0.pak or progs.dat
 ~~~
 
-###Advanced Commandline Formats
+### Advanced Commandline Formats
 
 The following command structure models use the directory example above. Of course there are user names and other folders that will need to be included depending on where the Quake folder is placed. Note: Quake is funny about names with spaces; use an underscore if you want to separate words.
 
@@ -208,7 +207,8 @@ For those interested there is a funny little app in the Mac Applicatons folder c
 6. Delete any commands in the box (my command box has the word "cat" in it).
 7. Add the following command: cd /path_to_QuakeRunner 
 
-cd = change directory. If there are spaces in any of the names in the path, quotes will be needed on each end. The quotes can be omitted if there is not.
+cd = change directory. If there are spaces in any of the names in the path, quotes will be needed on each end.
+The quotes can be omitted if there is not.
 
 8. Second line: /path_to_python_executable QuakeRunner.pyw
 
