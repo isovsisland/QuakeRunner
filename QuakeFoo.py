@@ -12,7 +12,7 @@ import platform
 
 
 def id_check(path):
-    id = dict()
+    id1 = dict()
     is_engine = False
     is_basedir = False
     opsys = platform.system()
@@ -33,12 +33,12 @@ def id_check(path):
         id_fldr = os.path.join(id_path, "id1")
         maps_fldr = os.path.join(id_fldr, "maps")
         pak_file = os.path.join(id_fldr, "pak0.pak")
-        id['id_valid'] = os.path.isdir(id_fldr) and os.path.isfile(pak_file)
-        id['maps_fldr'] = os.path.isdir(maps_fldr)
+        id1['id_valid'] = os.path.isdir(id_fldr) and os.path.isfile(pak_file)
+        id1['maps_fldr'] = os.path.isdir(maps_fldr)
     else:
         return False
 
-    return id
+    return id1
 
 def isQuake_game(path):
         try:
@@ -49,7 +49,12 @@ def isQuake_game(path):
             if not path.endswith("app"):
                 pak_file = os.path.join(path, "pak0.pak")
                 dat_file = os.path.join(path, "progs.dat")
-                return os.path.isfile(pak_file) or os.path.isfile(dat_file)
+                maps_folder = os.path.join(path, "maps")
+                if os.path.exists(maps_folder):
+                    contents = os.listdir(maps_folder)
+                    bsp_check = any([c for c in contents if ".bsp" in c])
+
+                return os.path.isfile(pak_file) or os.path.isfile(dat_file) or os.path.isdir(maps_folder) and bsp_check
             else:
                 return False
 
@@ -86,7 +91,7 @@ if __name__ == '__main__':
     print("Does folder contain valid Quake Files (Engine):", isQuake_game(engine))
     print("Does folder contain valid Quake Files (basedir):", isQuake_game(basedir))
     print("Does folder contain valid Quake Files (terra-2022):", isQuake_game(basedir+"//terra-2022"))
-    print("List of valid game folders (id folder):", get_games(engine))
+    print("List of valid game folders (id1 folder):", get_games(engine))
     print("List of valid game folders (basedir folder):", get_games(basedir))
     print("List of valid maps (basedir folder):", get_maps(basedir))
     print("List of valid maps (terra-2022):", get_maps(basedir+"//terra-2022"))
