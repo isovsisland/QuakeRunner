@@ -96,10 +96,10 @@ def get_maps(path):
 
 # Test Code #
 if __name__ == '__main__':
-    engine_no_id1 = r"C:\Users\IT213\Documents\Quake\ironwail-0.8.0-win64"
-    engine_id1 = r"C:\Users\IT213\Documents\Quake\quake-rt-1_0_1"
-    basedir_no_id1 = r"C:\Users\IT213\Documents\Quake"
-    basedir_id1 = r"C:\Users\IT213\Documents\Quake\PAKMOD"
+    engine_no_id1 = r"C:\Users\user\Documents\Quake\ironwail-0.8.0-win64"
+    engine_id1 = r"C:\Users\user\Documents\Quake\quake-rt-1_0_1"
+    basedir_no_id1 = r"C:\Users\user\Documents\Quake"
+    basedir_id1 = r"C:\Users\user\Documents\Quake\PAKMOD"
 
     print("engine no id1:", id1_check(engine_no_id1))
     print("engine with id1:", id1_check(engine_id1))
