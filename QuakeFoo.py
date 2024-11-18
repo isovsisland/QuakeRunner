@@ -1,97 +1,129 @@
-#!/usr/bin/env python3
-
+#!/usr/bn/env python3
 """
-110824
+111724
 QuakeFoo.py
 
-Functions for Quake Runner
+Support functions for Quake Runner
 """
 
 import os
 import platform
 
+def engine_check(file):
+    match platform.system():
+        case 'Darwin':
+            is_engine = file.endswith("app") and os.path.isdir(file)  # check if selection is app and if selection is a directory
+        case 'Windows':
+            is_engine = file.endswith("exe") and os.path.isfile(file)
+    return is_engine
 
-def id_check(path):
-    id1 = dict()
-    is_engine = False
-    is_basedir = False
-    opsys = platform.system()
+def id1_check(path):
+    kys = "id1_folder", "id1_pak0", "id1_pak1", "id1_maps", "id1_bsp"
+    id1 = {ky:False for ky in kys}
 
-    if opsys == 'Darwin':
-        is_engine = path.endswith("app") and os.path.isdir(path)  # check if selection is app and if selection is a directory
-    elif opsys == 'Windows':
-        is_engine = path.endswith("exe") and os.path.isfile(path)
+    id1_fldr = os.path.join(path, "id1")
+    id1['id1_folder'] = os.path.isdir(id1_fldr)
+    if id1['id1_folder']:
+        contents = os.listdir(id1_fldr)
+        id1['id1_pak0'] = any("pak0.pak" == c.lower() for c in contents)
+        id1['id1_pak1'] = any("pak1.pak" == c.lower() for c in contents)
 
-    if is_engine:
-        id_path = os.path.split(path)[0]
-    else:
-        is_basedir = os.path.isdir(path)
-        if is_basedir:
-            id_path = path
-
-    if is_engine or is_basedir:
-        id_fldr = os.path.join(id_path, "id1")
-        maps_fldr = os.path.join(id_fldr, "maps")
-        pak_file = os.path.join(id_fldr, "pak0.pak")
-        id1['id_valid'] = os.path.isdir(id_fldr) and os.path.isfile(pak_file)
-        id1['maps_fldr'] = os.path.isdir(maps_fldr)
-    else:
-        return False
-
+        id1_maps = os.path.join(id1_fldr, "maps")
+        id1['id1_maps'] = os.path.isdir(id1_maps)
+        if id1['id1_maps']:
+            contents = os.listdir(id1_maps)
+            id1['id1_bsp'] = any(".bsp" in c.lower() for c in contents)
     return id1
 
-def isQuake_game(path):
-        try:
-            os.path.isdir(path)
-        except OSError as err:
-            return err
-        else:
-            if not path.endswith("app"):
-                pak_file = os.path.join(path, "pak0.pak")
-                dat_file = os.path.join(path, "progs.dat")
-                maps_folder = os.path.join(path, "maps")
-                if os.path.exists(maps_folder):
-                    contents = os.listdir(maps_folder)
-                    bsp_check = any([c for c in contents if ".bsp" in c])
+def game_check(path):
+    """
+    Test a single folder for game data.
 
-                return os.path.isfile(pak_file) or os.path.isfile(dat_file) or os.path.isdir(maps_folder) and bsp_check
-            else:
-                return False
+    :param path: Folder path.
+    :return: Results for a given folder.
+    """
+    game_pak0 = False
+    game_progs = False
+    game_maps = False
+    game_bsp = False
 
-def get_games(path):
-    try:
+    if os.path.isdir(path):
         contents = os.listdir(path)
-    except OSError as err:
-        return err
-    else:
-        if not path.endswith("app") and contents:
-            folders = [c for c in contents if os.path.isdir(os.path.join(path, c)) and c != "id1"]
-            if folders:
-                return [f for f in folders if isQuake_game(os.path.join(path, f))]
-        else:
-            return False
+        game_pak0 = any("pak0.pak" == c.lower() for c in contents)
+        game_progs = any("progs.dat" == c.lower() for c in contents)
+
+        game_maps = os.path.join(path, "maps")
+        if os.path.isdir(game_maps):
+            contents = os.listdir(game_maps)
+            game_bsp = any(".bsp" in c.lower() for c in contents)
+
+    return game_pak0 or game_progs or game_bsp
+
+def get_game_folders(path):
+    contents = os.listdir(path)
+    cwd = os.getcwd()
+    os.chdir(path)
+    folders = [c for c in contents if os.path.isdir(c) and c != 'id1']
+    game_fldrs = [f for f in folders if game_check(f)]
+    os.chdir(cwd)
+
+    return game_fldrs
 
 def get_maps(path):
-    maps_folder = os.path.join(path, "id1")
-    maps_folder = os.path.join(maps_folder, "maps")
-    if os.path.exists(maps_folder):
-        contents = os.listdir(maps_folder)
-        bsp_files = [c for c in contents if c.endswith(".bsp")]
-        return bsp_files
+    """
+    Get list of bsp files in maps directory of source folder.
+    :param path: Source folder ex. /Quake/Engine/id1
+    :return: List of maps
+    """
+    if os.path.exists(path):
+        cwd = os.getcwd()
+        os.chdir(path)
+        if os.path.exists("maps") and os.path.isdir("maps"):
+            contents = os.listdir("maps")
+            if contents:
+                os.chdir("maps")
+                maps = [c for c in contents if os.path.isfile(c) and c.endswith(".bsp")]
+                os.chdir("..")
+            else:
+                maps = False
+        else:
+            maps = False
+        os.chdir(cwd)
     else:
-        return False
+        maps = False
+
+    return maps
 
 # Test Code #
 if __name__ == '__main__':
-    engine = r'<path to quake engine>'
-    basedir = r'<path to directory with id1 folder and mod games>'
+    engine_no_id1 = r"C:\Users\IT213\Documents\Quake\ironwail-0.8.0-win64"
+    engine_id1 = r"C:\Users\IT213\Documents\Quake\quake-rt-1_0_1"
+    basedir_no_id1 = r"C:\Users\IT213\Documents\Quake"
+    basedir_id1 = r"C:\Users\IT213\Documents\Quake\PAKMOD"
 
-    print("Valid id1 folder in Engine selection:", id_check(engine))
-    print("Valid id1 folder in basedir selection:", id_check(basedir))
-    print("Does folder contain valid Quake Files (Engine):", isQuake_game(engine))
-    print("Does folder contain valid Quake Files (basedir):", isQuake_game(basedir))
-    print("Does folder contain valid Quake Files (terra-2022):", isQuake_game(basedir+"//terra-2022"))
-    print("List of valid game folders (id1 folder):", get_games(engine))
-    print("List of valid game folders (basedir folder):", get_games(basedir))
-    print("List of valid maps (basedir folder):", get_maps(basedir))
-    print("List of valid maps (terra-2022):", get_maps(basedir+"//terra-2022"))
+    print("engine no id1:", id1_check(engine_no_id1))
+    print("engine with id1:", id1_check(engine_id1))
+    print("basedir no id1:", id1_check(basedir_no_id1))
+    print("basedir with id1", id1_check(basedir_id1))
+
+    print()
+    game_folders = get_game_folders(engine_no_id1)
+    print("Engine Game Folder Check no id1", game_folders)
+    game_folders = get_game_folders(engine_id1)
+    print("Engine Game Folder Check id1", game_folders)
+    game_folders = get_game_folders(basedir_no_id1)
+    print("Basedir Game Folder Check no id1", game_folders)
+    game_folders = get_game_folders(basedir_id1)
+    print("Basedir Game Folder Check id1", game_folders)
+
+    print()
+    map_folder = os.path.join(engine_no_id1, "id1")
+    print("no id1 maps:", get_maps(map_folder))
+    map_folder = os.path.join(engine_id1, "id1")
+    print("id1 maps:", get_maps(map_folder))
+
+    map_folder = os.path.join(basedir_no_id1, "id1")
+    print("id1 maps:", get_maps(map_folder))
+    map_folder = os.path.join(basedir_id1, "id1")
+    print("id1 maps:", get_maps(map_folder))
+

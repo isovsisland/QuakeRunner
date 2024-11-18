@@ -1,14 +1,16 @@
-#!/usr/bin/env python3
-
+#!/usr/bn/env python3
 """
-110424
-TkFoo.py
+111724
+tkFoo.py
 
-Custom tkinter functions & widgets.
+Custom tkinter
 """
+
+import os
 import subprocess
 
 import tkinter as tk
+from audioop import error
 from tkinter.constants import *
 from PIL import Image, ImageTk
 
@@ -30,24 +32,31 @@ class ScrollBarText():
         scbx.grid(row=1, column=0, sticky=EW)
 
         self.sbText = tk.Text(frame, wrap=NONE, state=DISABLED, yscrollcommand=scby.set, xscrollcommand=scbx.set)
-        self.sbText.grid(row=0, column=0, sticky=NSEW, padx=5)
+        self.sbText.grid(row=0, column=0, sticky=NSEW, pady=5, padx=5)
 
         scby['command'] = self.sbText.yview
         scbx['command'] = self.sbText.xview
 
         return self.sbText
 
-    def publish(self, text, cls=False):
+    def publish(self, text, newline=True, cls=False):
         self.sbText['state'] = NORMAL
         if cls: self.sbText.delete('1.0', END)
+        if newline: text += '\n'
         self.sbText.insert(END, text)
         self.sbText['state'] = DISABLED
+        self.sbText.see(END)
 
-    def launch(self, command, cls=False):
+    def run_command(self, cmd_str, cls=False):
+        if type(cmd_str) == str:
+            cmd_list = cmd_str.split(' ')
+        else:
+            return TypeError("<class 'str'>")
+
         self.sbText['state'] = NORMAL
         if cls: self.sbText.delete('1.0', END)
 
-        p = subprocess.Popen(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(cmd_list, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
         if stderr:
             self.sbText.insert(END, stderr)
@@ -56,13 +65,9 @@ class ScrollBarText():
 
         self.sbText.insert(END, f"\n *** Process Finished with Exit Code: {p.returncode} ***\n\n")
         self.sbText['state'] = DISABLED
+        self.sbText.see(END)
 
         return p
-
-def baseFrame(parent):
-    frame = tk.Frame(parent)
-    frame.pack(fill=X)
-    return frame
 
 def pilImageTk(file, size=None):
     """

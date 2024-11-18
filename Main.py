@@ -1,10 +1,12 @@
-#!/usr/bin/env python3
-
+#!/usr/bn/env python3
 """
-110224
-QuakeRunner.py
+111724
+Quake Runner
 
-Assembles commands to launch Quake with a user selected mod (game or map).
+Python tkinter GUI script to automate creation of the command-line argument to launch quake with mods.
+
+TODO: Add text file dialog to read text file (help file) of a selected game mod.
+TODO: Add entry box for entering additional mod options such as -hypnotic -quoth to be added to command before -game xxx.
 """
 
 import os
@@ -15,253 +17,352 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import tkinter.font as tkf
 import tkinter.filedialog as tfd
-import tkinter.messagebox as tmb
-from tkinter.constants import *
-import idlelib.tooltip as it
 
-import TkFoo as tfoo
+from tkinter.constants import *
+
 import QuakeFoo as qf
 
-TITLE = "Quake Runner"
-BTNWIDTH = 1
-DFLTDIR = "Documents"
-SELECTION = 'engine', 'basedir'
-CONFIGFILE = "config.json"
-REFRESH_IMG = "Quake Ouroboros.png"
-SKILL = "Easy", "Normal", "Hard", "Nightmare"
+import tkFoo as tf
 
-class Main(tk.Tk, tfoo.ScrollBarText):
+TITLE = "Quake Runner"
+REFRESH_IMG = 'qrimage1.png'
+QUAKERUNNER = 'qrimage2.png'
+CONFIGFILE = 'qrconfig.json'
+
+class Main(tk.Tk, tf.ScrollBarText):
     def __init__(self):
+        tf.ScrollBarText.__init__(self)
         super().__init__()
-        tfoo.ScrollBarText.__init__(self)
         self.title(TITLE)
         self.resizable(width=True, height=True)
 
         self.opsys = platform.system()
-        user_path = os.path.expanduser('~')
-        self.dflt_dir = os.path.join(user_path, DFLTDIR)
+        self.init_dir = str()  # Initial directory for file/folder dialog.
+        self.quake = {ky:False for ky in ('engine', 'id1_folder', 'id1_pak0', 'id1_pak1', 'id1_maps', 'id1_bsp')}
+        self.refresh_img = tf.pilImageTk(REFRESH_IMG, 36)
+        self.quakerunner_img = tf.pilImageTk(QUAKERUNNER, 256)
 
-        self.id = False
+        self.entryStrVar = {ky:tk.StringVar() for ky in ('engine', 'basedir', 'command')}
+        self.radiobtnStrVar = tk.StringVar(value='games')
+        self.comboboxStrVar = {ky:tk.StringVar(value='SELECT') for ky in ('id1_maps', 'games', 'maps')}
+        self.skillChkBtnBoolVar = tk.BooleanVar(value=False)  # Checkbox to activate/deactivate skill dropdown.
+        self.skillCbBoxStrVar = tk.StringVar(value='Normal')  # Dropdown box for skill selection Easy=0, Normal=1, Hard=2, Nightmare=3
+        self.mapChkBtnBoolVar = tk.BooleanVar(value=False)
 
-        self.refresh_img = tfoo.pilImageTk(REFRESH_IMG, 36)
-
-        self.entryStrVar = {s:tk.StringVar() for s in SELECTION}
-        self.modOptStrVar = tk.StringVar(value="game_mods")
-        self.gameStrVar = tk.StringVar(value="SELECT")
-        self.mapStrVar = tk.StringVar(value="SELECT")
-        self.modStrVar = tk.StringVar(value='game')
-        self.skillStrVar = tk.StringVar(value="Normal")
-        self.launchCmdStrVar = tk.StringVar()
-        self.modComboBox = dict()
-        self.game_list = list()
-        self.map_list = list()
-
+        rootMenu = tk.Menu(self)
         rootFrame = tk.Frame(self)
         rootFrame.pack(expand=True, fill=BOTH, pady=5, padx=5)
 
-        self.menuGroup()
+        # Widget Groups #
+        self.menuGroup(rootMenu)
         self.inputGroup(rootFrame)
-        self.modComboBox['games'], self.modComboBox['maps'] = self.gameGroup(rootFrame)
+        self.modGroupDict = self.modGroup(rootFrame)  # keys = 'id1_maps', 'skill', 'games', 'map_chkbtn', 'maps'
         self.commandGroup(rootFrame)
-        self.scbText(rootFrame, title=" Log ")
-        self.buttonGroup(rootFrame)
+        self.scbText(rootFrame, " Log ")
+        self.processGroup(rootFrame)
 
-        self._setSelections()
+        self.initConfig()  # Initialize config settings.
 
-        # Set Minimum Size, Center the Window & Start Main Loop #
-        self.update_idletasks()  # Update widgets to get accurate sizes.
-        win_width = self.winfo_width()
-        win_height = self.winfo_height()
-        self.minsize(width=win_width, height=win_height)  # Set window minimum size.
-        self.eval("tk::PlaceWindow . center")
-
+        self.update_idletasks()
+        w = self.winfo_width()
+        h = self.winfo_height()
+        self.minsize(width=w, height=h)
         self.mainloop()
 
-    def menuGroup(self):
-        menubar = tk.Menu(self)
-        self.config(menu=menubar)
+    def menuGroup(self, root):
+        settings = tk.Menu(root, tearoff=False)
+        settings.add_command(label="Save", command=self.saveUserSettings)
 
-        filemenu = tk.Menu(menubar, tearoff=False)
-        menubar.add_cascade(label='File', menu=filemenu)
+        ui_help = tk.Menu(root, tearoff=False)
+        ui_help.add_command(label="About")
 
-        filemenu.add_command(label='Save Selections', command=lambda: self.processUI('save'))
-        filemenu.add_separator()
-        filemenu.add_command(label='Quit', command=lambda: self.processUI('quit'))
+        root.add_cascade(label="Settings", menu=settings)
+        root.add_cascade(label="Help", menu=ui_help)
 
-        editmenu = tk.Menu(menubar, tearoff=False)
-        menubar.add_cascade(label='Help', menu=editmenu)
+        self.config(menu=root)
 
-        editmenu.add_command(label='About')  # TODO: Add about dialog
-        editmenu.add_separator()
-        editmenu.add_command(label='QuakePy Compiler')  # TODO: Add QuakePy Compiler help.
-        editmenu.add_command(label='Quake Console Commands')  # TODO: Add Quake console command help.
-
-    def inputGroup(self, parent):
-        frame = tfoo.baseFrame(parent)
+    def inputGroup(self, root):
+        frame = tk.Frame(root)
+        frame.pack(fill=X)
         frame.columnconfigure(index=1, weight=1)
 
+        w = 1  # Button width.
+
+        r = 0  # Row.
         engineLabel = tk.Label(frame, text="Quake Engine:")
-        engineLabel.grid(row=0, column=0, sticky=E)
+        engineLabel.grid(row=r, column=0, sticky=E)
         engineEntry = tk.Entry(frame, textvariable=self.entryStrVar['engine'])
-        engineEntry.grid(row=0, column=1, sticky=EW, padx=5)
-        engineButton = tk.Button(frame, width=BTNWIDTH, text="...", command=lambda: self.selectFile('engine'))
-        engineButton.grid(row=0, column=2, sticky=W)
-        it.Hovertip(engineButton, text="Get File Dialog")
+        engineEntry.grid(row=r, column=1, sticky=EW, padx=5)
+        fileButton = tk.Button(frame, width=w, text="...", command=self.askFile)
+        fileButton.grid(row=r, column=2, sticky=W)
 
+        r = 1  # Row.
         basedirLabel = tk.Label(frame, text="Base Directory:")
-        basedirLabel.grid(row=1, column=0, sticky=E)
+        basedirLabel.grid(row=r, column=0, sticky=E)
         basedirEntry = tk.Entry(frame, textvariable=self.entryStrVar['basedir'])
-        basedirEntry.grid(row=1, column=1, sticky=EW, padx=5)
-        basedirButton = tk.Button(frame, width=BTNWIDTH, text="...", command=lambda: self.selectDir('basedir'))
-        basedirButton.grid(row=1, column=2, sticky=W, pady=5)
-        it.Hovertip(basedirButton, text="Get Folder Dialog")
+        basedirEntry.grid(row=r, column=1, sticky=EW, padx=5)
+        folderButton = tk.Button(frame, width=w, text="...", command=self.askFolder)
+        folderButton.grid(row=r, column=2, sticky=W, pady=5)
 
-    def gameGroup(self, parent):
-        frame = tfoo.baseFrame(parent)
+    def modGroup(self, root):
+        frame = tk.Frame(root)
+        frame.pack(fill=X)
+        frame.columnconfigure(index=6, weight=1)
+
+        imgFrame = tk.Frame(frame)
+        imgFrame.grid(row=0, column=0)
+        quakeRunnerLabel = tk.Label(imgFrame, image=self.quakerunner_img)  # Quake Runner with Ranger image.
+        quakeRunnerLabel.grid(row=0, column=0, padx=5)
+
+        modFrame = tk.LabelFrame(frame, text=" Mods ")
+        modFrame.grid(row=0, column=1, sticky=N, padx=5)
+        modFrame.columnconfigure(index=0, weight=1)
+
+        modGroupDict = dict()  # Comboboxes 'id1_maps', 'skill', 'games', 'map_chkbtn', 'maps'
+        skill = "Easy", "Normal", "Hard", "Nightmare"
+
+        id1MapRadioBtn = tk.Radiobutton(modFrame, text="id1 Maps", value="id1_maps", variable=self.radiobtnStrVar, command=self.comboboxState)
+        id1MapRadioBtn.grid(row=0, column=1, sticky=E)
+        modGroupDict['id1_maps'] = ttk.Combobox(modFrame, state=DISABLED, textvariable=self.comboboxStrVar['id1_maps'])
+        modGroupDict['id1_maps'].grid(row=0, column=2, sticky=EW, pady=5, padx=5)
+        modGroupDict['id1_maps'].bind('<<ComboboxSelected>>', self.fillModComboBoxes)
+
+        skillCheckbutton = tk.Checkbutton(modFrame, text="Skill", variable=self.skillChkBtnBoolVar, command=self.comboboxState)
+        skillCheckbutton.grid(row=1, column=1, sticky=E)
+        modGroupDict['skill'] = ttk.Combobox(modFrame, state=DISABLED, values=skill, textvariable=self.skillCbBoxStrVar)
+        modGroupDict['skill'].grid(row=1, column=2, sticky=EW, pady=5, padx=5)
+        modGroupDict['skill'].bind('<<ComboboxSelected>>', self.updateCMDEntry)
+        # TODO: Add code to disable combobox when skill checkbox is unchecked.
+
+        gameRadioBtn = tk.Radiobutton(modFrame, text="Games", value='games', variable=self.radiobtnStrVar, command=self.comboboxState)
+        gameRadioBtn.grid(row=0, column=3, sticky=E)
+        modGroupDict['games'] = ttk.Combobox(modFrame, textvariable=self.comboboxStrVar['games'])
+        modGroupDict['games'].grid(row=0, column=4, sticky=EW, pady=5, padx=5)
+        modGroupDict['games'].bind('<<ComboboxSelected>>', self.fillModComboBoxes)
+
+        modGroupDict['map_chkbtn'] = tk.Checkbutton(modFrame, text="Map", variable=self.mapChkBtnBoolVar, command=self.comboboxState)
+        modGroupDict['map_chkbtn'].grid(row=1, column=3, sticky=E)
+        modGroupDict['maps'] = ttk.Combobox(modFrame, textvariable=self.comboboxStrVar['maps'])  # , textvariable=self.mapStrVar, values=self.map_list
+        modGroupDict['maps'].grid(row=1, column=4, sticky=EW, pady=5, padx=5)
+        modGroupDict['maps'].bind('<<ComboboxSelected>>', self.updateCMDEntry)  #
+
+        refreshButton = tk.Button(modFrame, text="R", image=self.refresh_img, command=lambda: self.processUI('refresh'))
+        refreshButton.grid(row=0, column=5, sticky=W, rowspan=2, padx=5)
+
+        return modGroupDict
+
+    def commandGroup(self, root):
+        frame = tk.LabelFrame(root, text=" Command ")
+        frame.pack(fill=X)
         frame.columnconfigure(index=0, weight=1)
 
-        gameRadioButton = tk.Radiobutton(frame, text="Game List:", value="game", variable=self.modStrVar, command=lambda: self.launchCommand('game'))
-        gameRadioButton.grid(row=0, column=1, sticky=E)
-        gameList = ttk.Combobox(frame, textvariable=self.gameStrVar, values=self.game_list)
-        gameList.grid(row=0, column=2, sticky=EW, pady=10)
-        gameList.bind('<<ComboboxSelected>>', self.launchCommand)
+        scbx = ttk.Scrollbar(frame, orient=HORIZONTAL)
+        scbx.grid(row=1, column=0, sticky=EW, padx=5)
 
-        spacer = tk.Frame(frame)
-        spacer.grid(row=0, column=3, sticky=EW, padx=10)
+        r = 0  # Row.
+        commandEntry = tk.Entry(frame, textvariable=self.entryStrVar['command'], xscrollcommand=scbx.set)
+        commandEntry.grid(row=r, column=0, sticky=EW, padx=5)
 
-        mapRadioButton = tk.Radiobutton(frame, text="Map List:", value="map", variable=self.modStrVar, command=lambda: self.launchCommand('map'))
-        mapRadioButton.grid(row=0, column=4, sticky=E)
-        mapList = ttk.Combobox(frame, textvariable=self.mapStrVar, values=self.map_list)
-        mapList.grid(row=0, column=5, sticky=EW, pady=10)
-        mapList.bind('<<ComboboxSelected>>', self.launchCommand)
+        scbx['command'] = commandEntry.xview
 
-        refreshButton = tk.Button(frame, text="R", image=self.refresh_img, command=lambda: self.processUI('refresh'))
-        refreshButton.grid(row=0, column=6, sticky=W, padx=5)
-        it.Hovertip(refreshButton, text="Refresh Game & Map List")
-
-        return gameList, mapList
-
-    def commandGroup(self, parent):
-        frame = tfoo.baseFrame(parent)
-        frame.columnconfigure(index=1, weight=1)
-
-        commandLabel = tk.Label(frame, text="Launch Command:")
-        commandLabel.grid(row=0, column=0, sticky=E)
-        commandEntry = tk.Entry(frame, textvariable=self.launchCmdStrVar)
-        commandEntry.grid(row=0, column=1, sticky=EW, pady=15)
-
-    def buttonGroup(self, parent):
-        frame = tfoo.baseFrame(parent)
+    def processGroup(self, root):
+        frame = tk.Frame(root)
+        frame.pack(fill=X)
         frame.columnconfigure(index=0, weight=1)
 
-        labels = "Quake", "Quit"
-        btn_width = int(max([tkf.Font().measure(text=l) for l in labels])/8.5)  # Measure text to set the width of the button.
+        names = "Quake", "Quit"
+        w = int(max([tkf.Font().measure(name) for name in names])/8)
 
-        quakeButton = tk.Button(frame, width=btn_width, text=labels[0], command=lambda: self.processUI('quake'))
-        quakeButton.grid(row=0, column=0, sticky=E, pady=5, padx=5)
+        r = 0  # Row.
+        quakeButton = tk.Button(frame, width=w, text=names[0], command=lambda: self.processUI('run'))
+        quakeButton.grid(row=r, column=1, sticky=E, padx=5, pady=5)
+        quitButton = tk.Button(frame, width=w, text=names[1], command=lambda: self.processUI('quit'))
+        quitButton.grid(row=r, column=2, sticky=E, padx=5, pady=5)
 
-        quitButton = tk.Button(frame, width=btn_width, text=labels[1], command=lambda: self.processUI('quit'))
-        quitButton.grid(row=0, column=1, sticky=E)
+    def initConfig(self):
+        with open(CONFIGFILE) as in_file:
+            settings = json.load(in_file)
 
-    def processUI(self, event):
+        user_path = os.path.expanduser('~')
+        self.init_dir = os.path.join(user_path, settings['dflt_dir'])
+
+        if settings['engine']:
+            self.entryStrVar['engine'].set(settings['engine'])
+        if settings['basedir']:
+            self.entryStrVar['basedir'].set(settings['basedir'])
+
+        # TODO: Add radio & checkbox settings.
+
+        if settings['engine'] and settings['basedir']:
+            self.fillModComboBoxes()
+
+    def processUI(self, event=None):
         match event:
             case 'refresh':
                 folder = self.entryStrVar['basedir'].get()
                 if folder:
-                    self._fillComboBox(folder)
-                    self.publish("Mod dropdowns have been refreshed.\n", cls=True)
-            case 'save':
-                selections = self._getSelections()
-                if selections:
-                    with open(CONFIGFILE, 'w') as out_file:
-                        json.dump(obj=selections, fp=out_file, indent=4)
-            case 'quake':
-                command = self.launchCmdStrVar.get()
-                if command:
-                    cwd = os.getcwd()
-                    cmd = command.split(' ')
-                    if self.opsys == 'Darwin':
-                        idx = 2
-                    elif self.opsys == 'Windows':
-                        idx = 0
-                    port_path = os.path.split(cmd[idx])
-                    os.chdir(port_path[0])
-                    cmd[idx] = port_path[1]
-                    self.launch(cmd)
-                    os.chdir(cwd)
+                    #[self.modGroupDict[ky].delete(0,END) for ky in ('id1_maps', 'games', 'maps')]
+                    for ky in ('id1_maps', 'games', 'maps'):
+                        self.modGroupDict[ky].delete(0, END)
+                        self.modGroupDict[ky].set('SELECT')
+                    self.fillModComboBoxes(folder)
+                    self.publish("Mod drop-down lists refreshed.")
+            case 'run':
+                command = self.entryStrVar['command'].get()
+                self.run_command(command)
             case 'quit':
                 self.destroy()
 
-    def selectDir(self, event):
-        folder = tfd.askdirectory(initialdir=self.dflt_dir)
+    def askFile(self):
+        file = tfd.askopenfilename(title="Selet File, Quake Engine", initialdir=self.init_dir)  # Get user selected Quake executable.
+        if file:
+            self.quake['engine'] = qf.engine_check(file)  # Validate Quake engine Mac or Windows as executable.
+            if self.quake['engine']:
+                self.entryStrVar['engine'].set(file)  # Update UI Quake Engine with path/file string.
+                folder = os.path.split(file)[0]  # Get path, strip executable file from string.
+                self.quake = self.quake | qf.id1_check(folder)  # Create union between dictionaries (merge data).
+                if self.quake['id1_folder'] and self.quake['id1_pak0']:  # Process engine directory as basedir if valid.
+                    self.publish("id1 Folder detected in Quake Engine directory.")
+                    self.entryStrVar['basedir'].set(folder)  # Update UI Base Directory with path string.
+                    if self.opsys == 'Darwin':
+                        self.publish("MacOS detected. A separate Base Directory is needed to load id1 mod maps.")
+                    elif self.opsys == 'Windows':
+                        self.publish("Windows detected.")
+                    if qf.get_game_folders(folder):  # Check if mod game folders exist.
+                        self.publish("Mod game folders detected in Quake Engine directory.")
+                    else:
+                        self.publish("Mod game folders not detected in Quake Engine directory.")
+                    if self.quake['id1_bsp']:  # Check if mod maps exist.
+                        self.publish("Mod maps detected in id1 folder.")
+                        self.fillModComboBoxes()  # Update UI comboboxes , id1_maps, games, (game) maps
+                    else:
+                        self.publish("Mod maps not detected id1 folder.")
+                else:
+                    self.publish("id1 Folder not detected in Quake Engine directory.")
+                    self.publish("id1 Folder needed in Base Directory to run Quake.")
+                self.updateCMDEntry()
+
+    def askFolder(self):
+        folder = tfd.askdirectory(title="Selet Folder, Base Directory", initialdir=self.init_dir)  # Get user selected Base Directory
         if folder:
-            id_check = qf.id_check(folder)
-            if id_check['id_valid']:
-                self.entryStrVar[event].set(folder)
-                self.publish("id1 Folder detected in Base directory.\n")
-                self._fillComboBox(folder)
-                if id_check['maps_fldr']:
-                    self.modComboBox['maps']['values'] = qf.get_maps(folder)
+            self.entryStrVar['basedir'].set(folder)  # Update UI Base Directory with path string.
+            self.publish("id1 Folder detected in Base Directory.")
+            games = qf.get_game_folders(folder)
+            if games:  # Check if mod game folders exist.
+                self.publish("Mod game folders detected in Base Directory.")
+                self.fillModComboBoxes()  # Update UI comboboxes , id1_maps, games, (game) maps
             else:
-                self.publish("id1 Folder not detected in Base directory.\n", cls=True)
-            self.launchCommand()
-
-    def selectFile(self, event):
-        file_path = tfd.askopenfilename(initialdir=self.dflt_dir)
-        if file_path:
-            self.entryStrVar[event].set(file_path)
-            id_check = qf.id_check(file_path)
-            if id_check['id_valid']:
-                eng_fldr = os.path.split(file_path)[0]
-                self.entryStrVar['basedir'].set(eng_fldr)
-                self.publish("id1 Folder detected in Quake engine directory.\n")
-                if id_check['maps_fldr']:
-                    self.mapStrVar.set(qf.get_games(eng_fldr))
-            else:
-                self.publish("id1 Folder not detected in Quake engine directory.\n", cls=True)
-            self.launchCommand()
-
-    def launchCommand(self, event=None):
-        eng, base, game_mod, map_mod = self._getSelections().values()
-        match self.modStrVar.get():
-            case 'game':
-                mod = f"-game {game_mod}"
-                self.publish("Game dropdown list selected.\n")
-            case 'map':
-                mod = f"+map {map_mod}"
-                self.publish("Map dropdown list selected.\n")
-        if self.opsys == 'Windows':
-            self.launchCmdStrVar.set(f'{eng} -basedir {base} {mod}')
-        if self.opsys == 'Darwin':
-            self.launchCmdStrVar.set(f'open -a {eng} --args -basedir {base} {mod}')
-
-    def _getSelections(self):
-        user_selections = {s:self.entryStrVar[s].get() for s in SELECTION}
-        user_selections['game'] = self.modComboBox['games'].get()
-        user_selections['map'] = self.modComboBox['maps'].get()
-        return user_selections
-
-    def _setSelections(self):
-        try:
-            with open(CONFIGFILE) as in_file:
-                selections = json.load(in_file)
-        except IOError as err:
-            pass
+                self.publish("Mod game folders not detected in Base Directory.")
+            self.updateCMDEntry()
         else:
+            self.publish("id1 Folder not detected in Base Directory.")
+            self.publish("id1 Folder needed in Base Directory to run Quake.")
 
-            if os.path.exists(selections['engine']) and os.path.exists(selections['basedir']):
-                self.dflt_dir = os.path.split(selections['basedir'])[0]
-                [self.entryStrVar[s].set(selections[s]) for s in SELECTION]
-                self._fillComboBox(folder=selections['basedir'])
-                self.modComboBox['games'].set(selections['game'])
-                self.modComboBox['maps'].set(selections['map'])
-                self.launchCommand()
+    def fillModComboBoxes(self, event=None):
+        basedir = self.entryStrVar['basedir'].get()
 
-    def _fillComboBox(self, folder):
-        self.gameStrVar.set("SELECT")
-        self.mapStrVar.set("SELECT")
-        self.modComboBox['games']['values'] = qf.get_games(folder)
-        self.modComboBox['maps']['values'] = qf.get_maps(folder)
+        id1_fldr = os.path.join(basedir, 'id1')
+        id1_maps = qf.get_maps(id1_fldr)  # Get bsp files from id1 map folder
+        if id1_maps:
+            self.modGroupDict['id1_maps']['values'] = id1_maps
+
+        games = qf.get_game_folders(basedir)
+        if games:
+            self.modGroupDict['games']['values'] = games
+
+        game = self.comboboxStrVar['games'].get()
+        if game and game != 'SELECT':
+            path = os.path.join(basedir, game)
+            print(path)
+            self.modGroupDict['maps']['values'] = qf.get_maps(path)
+
+        self.publish("Mod dropdown selections updated.")
+        self.updateCMDEntry()
+
+    def comboboxState(self):
+        """
+        Update combobox state based on Radiobutton state.
+        :return: None
+        """
+        match self.radiobtnStrVar.get():
+            case 'id1_maps':
+                self.modGroupDict['id1_maps']['state'] = NORMAL
+                self.modGroupDict['games']['state'] = DISABLED
+                self.modGroupDict['maps']['state'] = DISABLED
+                self.modGroupDict['map_chkbtn']['state'] = DISABLED
+            case 'games':
+                self.modGroupDict['id1_maps']['state'] = DISABLED
+                self.modGroupDict['games']['state'] = NORMAL
+                self.modGroupDict['maps']['state'] = NORMAL
+                self.modGroupDict['map_chkbtn']['state'] = NORMAL
+
+        if self.skillChkBtnBoolVar.get():
+            self.modGroupDict['skill']['state'] = NORMAL
+        elif not self.skillChkBtnBoolVar.get():
+            self.modGroupDict['skill']['state'] = DISABLED
+        self.updateCMDEntry()
+
+    def updateCMDEntry(self, event=None):
+        """
+        Build the command to launch Quake. The code below is written in sequence for the correct order of commads.
+        :param event: Required for the bind widget. Not used, set default to none.
+        :return: None
+        """
+        command = str()
+
+        if self.quake['engine']:
+            engine = self.entryStrVar['engine'].get()
+            if self.opsys == 'Darwin':  # Mac command prefix. Prefix not required for Windows.
+                command = "open -a "
+
+            if engine and os.path.exists(engine):
+                command += engine  # Add engine path and executable.
+            else:
+                self.publish("Quake Engine issue. Please re-enter.")
+
+            if self.opsys == 'Darwin' and engine:
+                command += " --args"  # Mac executable suffix.
+
+        folder = self.entryStrVar['basedir'].get()
+        if folder and os.path.exists(folder):
+            command += " -basedir "  # Add base directory (-basedir) command-line argument.
+            command += folder  # Add base directory folder path.
+
+        # add skill level
+        skill = {ky:val for val, ky in enumerate(("Easy", "Normal", "Hard", "Nightmare"))}
+        if self.skillChkBtnBoolVar.get() and self.quake['engine']:
+            skl = self.modGroupDict['skill'].get()
+            command += f" +skill {skill[skl]}"
+
+        radiobtn_sel = self.radiobtnStrVar.get()
+        id1_map = self.modGroupDict['id1_maps'].get()  # Add user map selection.
+        mod_map = self.modGroupDict['maps'].get()  # Add user map selection.
+        game = self.modGroupDict['games'].get()  # Add game selection.
+        match radiobtn_sel:  # Add map or game command-line argument.
+            case 'id1_maps':
+                if id1_map and id1_map != 'SELECT':
+                    command += f" +map {id1_map}"
+            case 'games':
+                if game and game != 'SELECT':
+                    command += f" -game {game}"
+                if self.mapChkBtnBoolVar.get() and mod_map and mod_map != 'SELECT':
+                    command += f" +map {mod_map}"
+
+        self.entryStrVar['command'].set(command)
+
+    def saveUserSettings(self):
+        settings = dict()
+        settings['dflt_dir'] = 'Documents'
+        settings['engine'] = self.entryStrVar['engine'].get()
+        settings['basedir'] = self.entryStrVar['basedir'].get()
+
+        settings['id1map_game_radbtn_state'] = self.radiobtnStrVar.get()  # Radiobutton control for id1_map & game/game map comboboxes.
+        settings['skill_chkbtn_state'] = self.skillChkBtnBoolVar.get()  # Skill checkbutton state.
+        settings['map_chkbtn_state'] = self.mapChkBtnBoolVar.get()  # Game map checkbutton state.
+
+        with open('qrconfig.json', 'w') as out_file:
+            json.dump(fp=out_file, obj=settings, indent=4)
+
 
 if __name__ == '__main__':
     Main()
