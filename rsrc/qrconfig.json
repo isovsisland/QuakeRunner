@@ -1,0 +1,14 @@
+{
+    "engine": "",
+    "basedir": "",
+    "mods_rdobtn": "games",
+    "skill_chkbtn": false,
+    "skill": "Normal",
+    "maps_chkbtn": true,
+    "dflt_dir": "Documents",
+    "mods_chkbtn": true,
+    "mod_chkbtn": true,
+    "mod_rdobtn": "games",
+    "skill_cbobox": "Normal",
+    "map_chkbtn": true
+}
