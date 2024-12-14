@@ -1,16 +1,18 @@
-#!/usr/bin/env python3
+#!/usr/local/bin/python3
+
 """
 111724
-tkFoo.py
+Python 3.12.7
 
-Custom tkinter
+tkFoo.py - Custom tkinter class.
+contains the code run the command create by the app.
+
 """
 
 import os
 import subprocess
 
 import tkinter as tk
-from audioop import error
 from tkinter.constants import *
 
 class ScrollBarText():
@@ -30,7 +32,7 @@ class ScrollBarText():
         scbx = tk.Scrollbar(frame, orient=HORIZONTAL)
         scbx.grid(row=1, column=0, sticky=EW)
 
-        self.sbText = tk.Text(frame, wrap=NONE, state=DISABLED, yscrollcommand=scby.set, xscrollcommand=scbx.set)
+        self.sbText = tk.Text(frame, state=DISABLED, wrap=NONE, yscrollcommand=scby.set, xscrollcommand=scbx.set)
         self.sbText.grid(row=0, column=0, sticky=NSEW, pady=5, padx=5)
 
         scby['command'] = self.sbText.yview
@@ -38,15 +40,24 @@ class ScrollBarText():
 
         return self.sbText
 
-    def publish(self, text, newline=True, cls=False):
+    def publish(self, text, newline=True, cls=False, end=True):
         self.sbText['state'] = NORMAL
         if cls: self.sbText.delete('1.0', END)
         if newline: text += '\n'
         self.sbText.insert(END, text)
         self.sbText['state'] = DISABLED
-        self.sbText.see(END)
+        if end:
+            self.sbText.see(END)
 
     def run_command(self, cmd_str, cls=False):
+        """
+        Method to launch the command-line instructions to run an external application.
+
+        :param cmd_str: str() of the command instructions.
+        :param cls: BOOL Clear creen before launching the command.
+        :return: Status of the subprocess.
+        """
+
         if type(cmd_str) == str:
             cmd_list = cmd_str.split(' ')
         else:

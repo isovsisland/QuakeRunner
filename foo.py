@@ -1,12 +1,20 @@
-#!/usr/bin/env python3
+#!/usr/local/bin/python3
+
 """
 112024
-foo.py
+Python 3.12.7
 
-Support functions.
+foo.py - Support functions.
+Functions
+    pilImageTk(file, size=None) - image manipulation for tkinter.
+    readCOnfig(file) - read json file.
+    writeCOnfig(file, settings) - write to json file.
+
 """
+
 import json
 from PIL import Image, ImageTk
+
 
 def pilImageTk(file, size=None):
     """
@@ -41,6 +49,12 @@ def pilImageTk(file, size=None):
     return ImageTk.PhotoImage(image)
 
 def readConfig(file):
+    """
+    Read json file for app configuration settings.
+
+    :param file: Path and file of the json file.
+    :return: Return exception or json contents if no issues.
+    """
     try:
         with open(file) as in_file:
             settings = json.load(in_file)
@@ -50,6 +64,13 @@ def readConfig(file):
         return settings
 
 def writeConfig(file, settings):
+    """
+    Write app configuration settings to a json file.
+
+    :param file: Path and file of the json file.
+    :param settings: Settings to be written.
+    :return: Return exception or True if no issues.
+    """
     try:
         with open(file, 'w') as out_file:
             json.dump(fp=out_file, obj=settings, indent=4)
