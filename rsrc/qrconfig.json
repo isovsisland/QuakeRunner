@@ -1,14 +1,10 @@
 {
-    "engine": "",
-    "basedir": "",
+    "dflt_dir": "/Users/stevebonczkowski/Quake",
+    "engine": "/Users/stevebonczkowski/Quake/vkQuake/vkquake",
+    "basedir": "/Users/stevebonczkowski/Quake/id1Remastered",
+    "mods_chkbtn": true,
     "mods_rdobtn": "games",
     "skill_chkbtn": false,
-    "skill": "Normal",
-    "maps_chkbtn": true,
-    "dflt_dir": "Documents",
-    "mods_chkbtn": true,
-    "mod_chkbtn": true,
-    "mod_rdobtn": "games",
     "skill_cbobox": "Normal",
-    "map_chkbtn": true
+    "maps_chkbtn": true
 }
